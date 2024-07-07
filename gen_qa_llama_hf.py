@@ -50,7 +50,7 @@ class QAGen:
     model_id: str = field(default="meta-llama/Meta-Llama-3-8B-Instruct", metadata={'help': 'Hugging face model id needed for qa-gen'})
     db_file: str = field(default="geo_llama3_8bb_hf_test", metadata={'help':'.db file name'})
     partition: str = field(default="1_1", metadata={'help':'.name of db'})
-    json_outfile: str = field(default="gps_coordinates", metadata={'help':'.gps json file name'})
+    outfolder: str = field(default="dbs", metadata={'help':'.name of folder to save dbs'})
     
     
 def dict_to_prompt(data_list):
@@ -138,8 +138,10 @@ def format_osm_data_for_prompt(osm_data):
 
 def qa_generate(ARGS): 
 
+    outfolder = os.makedirs(ARGS.outfolder, exist_ok=True)
+
  # Database setup
-    db_file = f"{ARGS.db_file}_{ARGS.partition}.db"
+    db_file = f"{outfolder}/{ARGS.db_file}_{ARGS.partition}.db"
     db_exists = os.path.exists(db_file)
     conn = sqlite3.connect(db_file)
     cursor = conn.cursor()
