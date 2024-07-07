@@ -30,6 +30,10 @@ pip install tqdm transformers torch # Add any other libraries as needed
 ## Installing
 Clone this repository to your local machine.
 
+## Collect OSM Metadata
+Run extract_osm.py
+This script makes api calls to OSM servers and collects the metadata.
+
 ## Executing the Program
 Running gen_qa_llama_hf.py
 This script processes the OSM data and generates question-answer pairs. To run this script, you need to provide certain parameters, such as the path to the OSM JSON file and Hugging Face model details.

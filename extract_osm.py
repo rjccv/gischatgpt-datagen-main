@@ -283,6 +283,9 @@ def fetch_osm_data(lat, lon, radius=1000, method=1, dataset_name='im2gps3k'):
 
 
 def extract_osm(csv_file, data_dir, method, dataset_name, output_dir, partition):
+
+    os.makedirs(output_dir, exist_ok=True)
+
     im2gps3k = im2gps3ktestDataset(csv_file=csv_file, data_dir=data_dir)
     # dataloader = DataLoader(im2gps3k, batch_size=1, shuffle=False) 
     dataloader = DataLoader(im2gps3k, batch_size=2, shuffle=False) 
