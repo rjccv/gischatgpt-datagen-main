@@ -7,6 +7,10 @@ from transformers import HfArgumentParser
 import textwrap
 from tqdm import tqdm  
 import re 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import os
+from itertools import islice
+
 
 
 @dataclass
@@ -201,6 +205,7 @@ def fetch_osm_data_tags_and_name(lat, lon, radius):
 """Method 7 -Usefull Data - Processed """
 
 def fetch_osm_data_method7(lat, lon, radius):
+
     # Define the Overpass API endpoint
     overpass_url = "http://overpass-api.de/api/interpreter"
 
@@ -230,40 +235,59 @@ def fetch_osm_data_method7(lat, lon, radius):
                 print("Response is not in json format. Try again")
                 print(response.text)
 
-
     # Extract only the "tags" that have a "name" key
     filtered_tags = []
     for element in osm_data["elements"]:
         if "tags" in element and "name" in element["tags"]:
             
             tags = element["tags"]
-            tags.pop("local_ref", None)  # Remove 'local_ref' if it exists
-            tags.pop("brand:wikidata", None)      # Remove 'brand' if it exists
-            tags.pop("ref", None)  
-            tags.pop("website",None) 
-            tags.pop("source",None)
-            tags.pop("wikipedia",None)
-            tags.pop("wikidata",None)
-            tags.pop("facebook",None)
-            tags.pop("fhrs:id",None)
-            tags.pop("image",None)
-            #tags.pop("contact:website",None)
-            tags.pop("network:wikidata",None)
-            tags.pop("network:wikipedia",None)
-            tags.pop("fhrs:id",None)
+
+            keys_to_remove = [
+                'local_ref', 'brand:wikidata', 'ref', 'website', 'source',
+                'wikipedia', 'wikidata', 'facebook', 'fhrs:id', 'image',
+                'network:wikidata', 'network:wikipedia', 'check_date',
+                'website:stock', 'contact:website', 'contact:facebook',
+                'operator:wikidata', 'network:website', 'contact:twitter',
+                'contact:github', 'contact:email', 'contact:youtube',
+                'contact:instagram', 'contact:tiktok', 'contact:linkedin',
+                'mapillary', 'artist:wikidata', 'contact:foursquare',
+                'url', 'app:apple', 'app:google', 'opening_hours:url',
+                'symbol', 'email', 'qroti:url','operator:wikipedia','contact:pinterest',
+                'operator:wikipedia','operator:short'
+
+                ]
             
-            tags = {key: value for key, value in tags.items() if not key.startswith('name:')} #To remove tags like 'name:en'
+            for key in keys_to_remove:
+                tags.pop(key, None)
+
+
+            tags = {key: value for key, value in tags.items() if "wikidata" not in key}
+            tags = {key: value for key, value in tags.items() if "wikipedia" not in key}
+            tags = {key: value for key, value in tags.items() if "multipolygon" not in key}
+
+             # Keep 'name:en', remove other 'name:' keys
+            name_en = tags.get('name:en')
+            tags = {key: value for key, value in tags.items() if not key.startswith('name:') or key == 'name:en'}
+            if name_en is not None:
+                tags['name:en'] = name_en
+            #tags = {key: value for key, value in tags.items() if not key.startswith('name:')} #To remove tags like 'name:en'
             tags = {key: value for key, value in tags.items() if not key.startswith('ref:')}
             tags = {key: value for key, value in tags.items() if not key.startswith('source:')}
             tags = {key: value for key, value in tags.items() if not key.startswith('brand:')}
-           
+            tags = {key: value for key, value in tags.items() if not key.startswith('gnis')} #Geographic Names Information System
+            tags = {key: value for key, value in tags.items() if not key.startswith('gtfs')}
+            tags = {key: value for key, value in tags.items() if not key.startswith('check_date:')}#last modification
+            tags = {key: value for key, value in tags.items() if not key.startswith('tiger')}#"Topologically Integrated Geographic Encoding and Referencing
+            tags = {key: value for key, value in tags.items() if not key.startswith('naptan')}
             
-                 
+
             filtered_tags.append(tags)
-    
+
     return filtered_tags
 
-def fetch_osm_data(lat, lon, radius=1000, method=1, dataset_name='im2gps3k'):
+
+
+def fetch_osm_data(lat, lon, radius=1000, method=1, dataset_name='MP16'):
     if method == 1:
         return fetch_osm_data_raw(lat, lon, radius)
     elif method == 2:
@@ -282,28 +306,54 @@ def fetch_osm_data(lat, lon, radius=1000, method=1, dataset_name='im2gps3k'):
         return "Invalid method"
 
 
-def extract_osm(csv_file, data_dir, method, dataset_name, output_dir, partition):
+import json
 
+def extract_osm(csv_file, data_dir, method, output_dir, dataset_name, partition):
     os.makedirs(output_dir, exist_ok=True)
 
     im2gps3k = im2gps3ktestDataset(csv_file=csv_file, data_dir=data_dir)
-    # dataloader = DataLoader(im2gps3k, batch_size=1, shuffle=False) 
-    dataloader = DataLoader(im2gps3k, batch_size=2, shuffle=False) 
-   
-   
-   
-    osm_data_list = []
-    for img_id, lat, lon in tqdm(dataloader, desc="Appending OSM to dataset"):
-            img_id , ext = os.path.splitext(img_id[0])
+    dataloader = DataLoader(im2gps3k, batch_size=1, shuffle=False)
 
-            # load language model for data enrichment
-            osm_data = fetch_osm_data(lat.item(), lon.item(), method=method)
-            if osm_data is None:
-                continue
-            osm_data_list.append({'filename': img_id + ext, 'gps':(lat.item(), lon.item()), 'osm':osm_data,})
+    batch_size = 100  # Number of samples to process before writing to the file
+    batch_counter = 0  # Counter for tracking the number of samples in the current batch
+    first_write = True  # Flag to track if it's the first time writing to the file
 
-    with open(f'{output_dir}/M{method}_{dataset_name}_osm_data_{partition}.json', 'w') as file:
-        json.dump(osm_data_list, file)   
+    with ThreadPoolExecutor(max_workers=5) as executor, open(f'{output_dir}/M{method}_{dataset_name}_osm_data_{partition}.json', 'w') as file:
+        futures_map = {}  # Use a dictionary to map futures to their data
+        file.write('[')  # Start the JSON array
+
+        for img_id, lat, lon in tqdm(dataloader, desc="Fetching OSM data in parallel"):
+            img_id, ext = os.path.splitext(img_id[0])
+            future = executor.submit(fetch_osm_data, lat.item(), lon.item(), method=method)
+            futures_map[future] = (img_id, ext, lat.item(), lon.item())
+            batch_counter += 1
+
+            if batch_counter >= batch_size:
+                # Process the current batch
+                for future in as_completed(futures_map):
+                    img_id, ext, lat, lon = futures_map[future]
+                    osm_data = future.result()
+
+                    # Write data to file with proper JSON formatting
+                    if not first_write:
+                        file.write(',')
+                    json.dump({'filename': img_id + ext, 'gps': (lat, lon), 'osm': osm_data}, file)
+                    first_write = False
+
+                # Reset for the next batch
+                futures_map = {}
+                batch_counter = 0
+
+        # Process and write any remaining data
+        for future in as_completed(futures_map):
+            img_id, ext, lat, lon = futures_map[future]
+            osm_data = future.result()
+
+            if not first_write:
+                file.write(',')
+            json.dump({'filename': img_id + ext, 'gps': (lat, lon), 'osm': osm_data}, file)
+
+        file.write(']')  # End the JSON array
 
 
 def main():
@@ -311,7 +361,7 @@ def main():
     
     osm_gen, _ = parser.parse_args_into_dataclasses(
             return_remaining_strings=True)    # Optionally, show a warning on unknown arguments.
-    extract_osm(osm_gen.csv_file, osm_gen.im2gps_dir, osm_gen.method, osm_gen.dataset_name, osm_gen.outfile, osm_gen.partition)
+    extract_osm(osm_gen.csv_file, osm_gen.im2gps_dir, osm_gen.method, osm_gen.outfile, osm_gen.dataset_name, osm_gen.partition)
     
     
 if __name__ == "__main__":
