@@ -2,7 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
-*.sh
+# *.sh
 
 # C extensions
 *.so
@@ -166,7 +166,7 @@ lava_weights/
 *.pkl
 Geo-ChatGPT_checkpoints/
 jason_files/
-*.sh
+# *.sh
 data_generation/
 *.json
 *.drawio
