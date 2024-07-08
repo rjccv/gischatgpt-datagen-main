@@ -7,8 +7,8 @@ This project aims to generate a question-answer dataset based on reformatted Ope
 ## Getting Started
 ## Create Conda Env
 ```bash
-conda create -n gisdatagen
-conda activate gisdatagen
+conda create -n geo-chatgpt --python=3.10
+conda activate geo-chatgpt
 ```
 
 ### Dependencies
@@ -24,15 +24,35 @@ conda activate gisdatagen
 Install the necessary libraries using the following command:
 
 ```bash
-pip install tqdm transformers torch # Add any other libraries as needed
+pip install -r requirements.txt # Add any other libraries as needed
 ```
 
 ## Installing
-Clone this repository to your local machine.
+- Clone this repository to your local machine.\
+- Download ``batch_scripts`` and ``mp16_<version>_csv`` folders onto root directory
+
+# Run with shell
+Run 4 jobs at a time on osm
+```
+chmod +x osm_calls.sh
+./osm_calls.sh
+```
+
+After all 4 are complete, run:
+```
+chmod +x gen_qa.sh
+./gen_qa.sh
+```
+
+Edit files .sh to reflect newer splits, or run directly from ``sbatch_scripts``
+
+# Executing files individually
+
 
 ## Collect OSM Metadata
 Run extract_osm.py
 This script makes api calls to OSM servers and collects the metadata.
+
 
 ## Executing the Program
 Running gen_qa_llama_hf.py
