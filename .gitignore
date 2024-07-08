@@ -192,7 +192,7 @@ gps_json_files
 dbs
 llama3-weights
 *mp16*
-sbatch_scripts
+sbatch_scripts*
 
 add_original_to_json.py
 combine_jsons.py
