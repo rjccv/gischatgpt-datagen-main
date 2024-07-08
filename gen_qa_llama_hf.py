@@ -17,11 +17,11 @@ from torch.utils.data import DataLoader
 
 from tqdm.auto import tqdm 
 
-BEGIN_OF_TEXT = "<|begin_of_text|>"
-END_OF_TEXT = "<|end_of_text|>"
-START_HEADER_ID = "<|start_header_id|>"
-END_HEADER_ID = "<|end_header_id|>"
-EOT_ID = "<|eot_id|>"
+# BEGIN_OF_TEXT = "<|begin_of_text|>"
+# END_OF_TEXT = "<|end_of_text|>"
+# START_HEADER_ID = "<|start_header_id|>"
+# END_HEADER_ID = "<|end_header_id|>"
+# EOT_ID = "<|eot_id|>"
 
 @dataclass
 class dataset_osm(Dataset):
@@ -154,14 +154,6 @@ def qa_generate(ARGS):
     dataloader = DataLoader(osm_dataset,shuffle=True, batch_size=None)
     
     model_name = ARGS.model_id
-    # config = AutoConfig.from_pretrained(model_name)
-    # tokenizer = AutoTokenizer.from_pretrained(model_name,token=ARGS.hf_token)
-    # # model = LlamaForCausalLM.from_pretrained(model_name, config=config, device_map='auto', token=ARGS.hf_token)
-    # model = LlamaForCausalLM.from_pretrained(model_name, device_map='auto')
-
-    # config = AutoConfig.from_pretrained(model_name, token=ARGS.hf_token)
-    # tokenizer = AutoTokenizer.from_pretrained(model_name)
-    # model = AutoModelForCausalLM.from_pretrained(model_name)
 
     pipe = pipeline(
         "text-generation",
@@ -176,13 +168,6 @@ def qa_generate(ARGS):
 
     for i, (lat, lon, osm_data, img_id) in enumerate(tqdm(dataloader, desc="Stage 2: Generating QA pairs", total=len(osm_dataset))):
 
-        # gps_dict = {
-        #     "filename": img_id,
-        #     "lat": lat,
-        #     "lon": lon
-        # }
-
-        # json_outfile.append(gps_dict)
         
         # Check if entry already exists
         img_id, _ = os.path.splitext(img_id)
@@ -207,12 +192,7 @@ def qa_generate(ARGS):
             top_p=0.9,
         )
         output_text = outputs[0]["generated_text"][-1]["content"]
-        # input_tokenized = tokenizer(messages, return_tensors="pt")
-        # input_tokenized = input_tokenized.to(first_module_device)
 
-        # output = model.generate(input_tokenized["input_ids"], do_sample=True,max_length=2048)
-        # output_text = tokenizer.decode(output[0][len(input_tokenized["input_ids"][0]):])
-        # output_text.extend(tokenizer.decode(output[0][len(input_tokenized["input_ids"][0]):]))
 
         # Insert into the database
         # Note: 'id' column will auto-increment, so we don't need to provide a value for it
@@ -222,8 +202,7 @@ def qa_generate(ARGS):
 
     conn.close()
 
-    # with open(json_coordinate_file, 'r') as f:
-    #     json.dump(json_outfile, f, indent=4)
+
 
 
 

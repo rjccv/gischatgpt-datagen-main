@@ -16,14 +16,6 @@ class im2gps3ktestDataset(Dataset):
     def __post_init__(self):
         self.data_df = pd.read_csv(self.csv_file)
         
-        # # Filter out rows with non-existent image files
-        # self.data_df = self.data_df[self.data_df['IMG_ID'].apply(
-        #     lambda x: os.path.exists(os.path.join(self.data_dir, x)))]
-        # Filter out rows with non-existent image files
-        # self.data_df = self.data_df[self.data_df['IMG_ID'].apply(
-        #     lambda x: os.path.join(self.data_dir, x))]
-    
-       
     def __len__(self):
         return len(self.data_df)
 
