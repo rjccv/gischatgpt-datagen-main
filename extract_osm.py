@@ -225,15 +225,16 @@ def fetch_osm_data_method7(lat, lon, radius):
         if tries == 5:
             return None
         # Fetch data from the API
-        response = requests.get(overpass_url, params={'data': overpass_query})
-        if response.status_code == 200:
-            try:
-                osm_data = response.json()
-                break
-            except:
-                tries += 1
-                print("Response is not in json format. Try again")
-                print(response.text)
+        # response = requests.get(overpass_url, params={'data': overpass_query})
+        with requests.get(overpass_url, params={'data': overpass_query}, stream=True) as r:
+            if r.status_code == 200:
+                try:
+                    osm_data = r.json()
+                    break
+                except:
+                    tries += 1
+                    print("Response is not in json format. Try again")
+                    print(r.text)
 
     # Extract only the "tags" that have a "name" key
     filtered_tags = []

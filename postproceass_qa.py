@@ -46,10 +46,12 @@ def read_db_and_process(ARGS):
 
     # Query to select img and conversation columns
     cursor.execute("SELECT id, img_id, question, lat, lon FROM data")
+    # cursor.execute("SELECT id, img_id, question FROM data")
 
     list_of_instruction_tuning = []
     # Process each record
     for i, (id, img_id, conversation, lat, lon) in enumerate(cursor):
+    # for i, (id, img_id, conversation) in enumerate(cursor):
         qa_pairs = parse_qa(conversation)
 
         # Prepare the output content

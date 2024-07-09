@@ -17,11 +17,11 @@ from torch.utils.data import DataLoader
 
 from tqdm.auto import tqdm 
 
-# BEGIN_OF_TEXT = "<|begin_of_text|>"
-# END_OF_TEXT = "<|end_of_text|>"
-# START_HEADER_ID = "<|start_header_id|>"
-# END_HEADER_ID = "<|end_header_id|>"
-# EOT_ID = "<|eot_id|>"
+BEGIN_OF_TEXT = "<|begin_of_text|>"
+END_OF_TEXT = "<|end_of_text|>"
+START_HEADER_ID = "<|start_header_id|>"
+END_HEADER_ID = "<|end_header_id|>"
+EOT_ID = "<|eot_id|>"
 
 @dataclass
 class dataset_osm(Dataset):
