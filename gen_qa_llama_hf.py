@@ -48,8 +48,8 @@ class QAGen:
     osm_json_file: str = field(default="./M7_MP16_osm_data_data_2.json", metadata={'help': 'JSON of OSM data gathered from step 1'})
     hf_token: str = field(default="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",metadata={'help':'Hugging Face token for using certain models'})
     model_id: str = field(default="meta-llama/Meta-Llama-3-8B-Instruct", metadata={'help': 'Hugging face model id needed for qa-gen'})
-    db_file: str = field(default="geo_llama3_8bb_hf_test", metadata={'help':'.db file name'})
-    partition: str = field(default="1_1", metadata={'help':'.name of db'})
+    db_file: str = field(default="geo_llama3_8b_hf", metadata={'help':'.db file name'})
+    partition: str = field(default="1", metadata={'help':'.name of db'})
     outfolder: str = field(default="dbs", metadata={'help':'.name of folder to save dbs'})
     
     
@@ -138,9 +138,11 @@ def format_osm_data_for_prompt(osm_data):
 
 def qa_generate(ARGS): 
 
-    outfolder = os.makedirs(ARGS.outfolder, exist_ok=True)
-
+    outfolder = ARGS.outfolder
+    os.makedirs(outfolder, exist_ok=True)
+    
  # Database setup
+    # db_file = f"{outfolder}/{ARGS.db_file}_{ARGS.partition}.db"
     db_file = f"{outfolder}/{ARGS.db_file}_{ARGS.partition}.db"
     db_exists = os.path.exists(db_file)
     conn = sqlite3.connect(db_file)
