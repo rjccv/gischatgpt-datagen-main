@@ -283,6 +283,7 @@ def fetch_osm_data_method7(lat, lon, radius):
             tags = {key: value for key, value in tags.items() if (key.startswith("short_name") and key.endswith("en")) or not key.startswith("short_name")}
             tags = {key: value for key, value in tags.items() if (key.startswith("alt_name") and key.endswith("en")) or not key.startswith("alt_name")}
             tags = {key: value for key, value in tags.items() if (key.startswith("official_name") and key.endswith("en")) or not key.startswith("official_name")}
+            tags = {key: value for key, value in tags.items() if (key.startswith("old_name") and key.endswith("en")) or not key.startswith("old_name")}
 
             filtered_tags.append(tags)
 
