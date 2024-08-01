@@ -10,6 +10,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 from itertools import islice
+import tempfile
 
 
 
@@ -322,42 +323,51 @@ def extract_osm(csv_file, data_dir, method, output_dir, dataset_name, partition)
     batch_counter = 0  # Counter for tracking the number of samples in the current batch
     first_write = True  # Flag to track if it's the first time writing to the file
 
-    with ThreadPoolExecutor(max_workers=5) as executor, open(f'{output_dir}/M{method}_{dataset_name}_osm_data_{partition}.json', 'w') as file:
-        futures_map = {}  # Use a dictionary to map futures to their data
-        file.write('[')  # Start the JSON array
+    temp_file = tempfile.NamedTemporaryFile(delete=False, mode='w', encoding='utf-8', newline='', suffix='.json')
+    try:
+        with ThreadPoolExecutor(max_workers=5) as executor, open(temp_file.name, 'w') as file:
+            futures_map = {}  # Use a dictionary to map futures to their data
+            file.write('[')  # Start the JSON array
 
-        for img_id, lat, lon in tqdm(dataloader, desc="Fetching OSM data in parallel"):
-            img_id, ext = os.path.splitext(img_id[0])
-            future = executor.submit(fetch_osm_data, lat.item(), lon.item(), method=method)
-            futures_map[future] = (img_id, ext, lat.item(), lon.item())
-            batch_counter += 1
+            first_write = True  # Track if it's the first write after opening the file
+            batch_counter = 0
 
-            if batch_counter >= batch_size:
-                # Process the current batch
-                for future in as_completed(futures_map):
-                    img_id, ext, lat, lon = futures_map[future]
-                    osm_data = future.result()
+            for img_id, lat, lon in tqdm(dataloader, desc="Fetching OSM data in parallel"):
+                img_id, ext = os.path.splitext(img_id[0])
+                future = executor.submit(fetch_osm_data, lat.item(), lon.item(), method=method)
+                futures_map[future] = (img_id, ext, lat.item(), lon.item())
+                batch_counter += 1
 
-                    # Write data to file with proper JSON formatting
-                    if not first_write:
-                        file.write(',')
-                    json.dump({'filename': img_id + ext, 'gps': (lat, lon), 'osm': osm_data}, file)
-                    first_write = False
+                if batch_counter >= batch_size:
+                    # Process the current batch
+                    for future in as_completed(futures_map):
+                        img_id, ext, lat, lon = futures_map[future]
+                        osm_data = future.result()
 
-                # Reset for the next batch
-                futures_map = {}
-                batch_counter = 0
+                        # Write data to file with proper JSON formatting
+                        if not first_write:
+                            file.write(',')
+                        json.dump({'filename': img_id + ext, 'gps': (lat, lon), 'osm': osm_data}, file)
+                        first_write = False
 
-        # Process and write any remaining data
-        for future in as_completed(futures_map):
-            img_id, ext, lat, lon = futures_map[future]
-            osm_data = future.result()
+                    # Reset for the next batch
+                    futures_map.clear()
+                    batch_counter = 0
 
-            if not first_write:
-                file.write(',')
-            json.dump({'filename': img_id + ext, 'gps': (lat, lon), 'osm': osm_data}, file)
+            # Process and write any remaining data
+            for future in as_completed(futures_map):
+                img_id, ext, lat, lon = futures_map[future]
+                osm_data = future.result()
 
-        file.write(']')  # End the JSON array
+                if not first_write:
+                    file.write(',')
+                json.dump({'filename': img_id + ext, 'gps': (lat, lon), 'osm': osm_data}, file)
+
+            file.write(']')  # End the JSON array
+
+    finally:
+        # Close the temp file and rename it to the final output file
+        os.rename(temp_file.name, f'{output_dir}/M{method}_{dataset_name}_osm_data_{partition}.json')
 
 
 def main():
