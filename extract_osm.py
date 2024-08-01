@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 from itertools import islice
 import tempfile
+import pandas as pd
 
 
 
@@ -348,11 +349,23 @@ def extract_osm(csv_file, data_dir, method, output_dir, dataset_name, partition)
             
             first_write = not os.path.exists(output_file) or not existing_data
 
+            #checks existing filenames
+            existing_filenames = {entry['filename'] for entry in existing_data}
+
             for img_id, lat, lon in tqdm(dataloader, desc="Fetching OSM data in parallel"):
                 img_id, ext = os.path.splitext(img_id[0])
+
+                filename = img_id + ext
+
+                # Skip if the data is already collected
+                if filename in existing_filenames:
+                    continue
+
+
                 future = executor.submit(fetch_osm_data, lat.item(), lon.item(), method=method)
                 futures_map[future] = (img_id, ext, lat.item(), lon.item())
                 batch_counter += 1
+
 
                 if batch_counter >= batch_size:
                     # Process the current batch
