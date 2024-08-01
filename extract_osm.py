@@ -336,6 +336,7 @@ def extract_osm(csv_file, data_dir, method, output_dir, dataset_name, partition)
             first_write = True  # Track if it's the first write after opening the file
             batch_counter = 0
 
+            existing_data = []
             # Read existing data from the output file if it exists
             if os.path.exists(output_file):
                 with open(output_file, 'r') as file:
