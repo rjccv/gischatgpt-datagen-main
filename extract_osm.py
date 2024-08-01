@@ -9,6 +9,7 @@ from tqdm import tqdm
 import re 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
+import shutil
 from itertools import islice
 import tempfile
 import pandas as pd
@@ -347,7 +348,7 @@ def extract_osm(csv_file, data_dir, method, output_dir, dataset_name, partition)
                     json.dump(entry, temp_file_obj)
                     temp_file_obj.write(',')
             
-            first_write = not os.path.exists(output_file) or not existing_data
+            first_write = not existing_data
 
             #checks existing filenames
             existing_filenames = {entry['filename'] for entry in existing_data}
@@ -396,7 +397,7 @@ def extract_osm(csv_file, data_dir, method, output_dir, dataset_name, partition)
 
     finally:
         # Close the temp file and rename it to the final output file
-        os.rename(temp_file.name, output_file)
+        shutil.move(temp_file.name, output_file)
 
 
 def main():
