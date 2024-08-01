@@ -319,18 +319,34 @@ def extract_osm(csv_file, data_dir, method, output_dir, dataset_name, partition)
     im2gps3k = im2gps3ktestDataset(csv_file=csv_file, data_dir=data_dir)
     dataloader = DataLoader(im2gps3k, batch_size=1, shuffle=False)
 
+    output_file = f'{output_dir}/M{method}_{dataset_name}_osm_data_{partition}.json'
+
     batch_size = 100  # Number of samples to process before writing to the file
     batch_counter = 0  # Counter for tracking the number of samples in the current batch
     first_write = True  # Flag to track if it's the first time writing to the file
 
     temp_file = tempfile.NamedTemporaryFile(delete=False, mode='w', encoding='utf-8', newline='', suffix='.json')
     try:
-        with ThreadPoolExecutor(max_workers=5) as executor, open(temp_file.name, 'w') as file:
+        with ThreadPoolExecutor(max_workers=5) as executor, open(temp_file.name, 'w') as temp_file_obj:
             futures_map = {}  # Use a dictionary to map futures to their data
-            file.write('[')  # Start the JSON array
+            temp_file_obj.write('[')  # Start the JSON array
 
             first_write = True  # Track if it's the first write after opening the file
             batch_counter = 0
+
+            # Read existing data from the output file if it exists
+            if os.path.exists(output_file):
+                with open(output_file, 'r') as file:
+                    try:
+                        existing_data = json.load(file)
+                    except json.JSONDecodeError:
+                        existing_data = []
+
+                for entry in existing_data:
+                    json.dump(entry, temp_file_obj)
+                    temp_file_obj.write(',')
+            
+            first_write = not os.path.exists(output_file) or not existing_data
 
             for img_id, lat, lon in tqdm(dataloader, desc="Fetching OSM data in parallel"):
                 img_id, ext = os.path.splitext(img_id[0])
@@ -346,8 +362,8 @@ def extract_osm(csv_file, data_dir, method, output_dir, dataset_name, partition)
 
                         # Write data to file with proper JSON formatting
                         if not first_write:
-                            file.write(',')
-                        json.dump({'filename': img_id + ext, 'gps': (lat, lon), 'osm': osm_data}, file)
+                            temp_file_obj.write(',')
+                        json.dump({'filename': img_id + ext, 'gps': (lat, lon), 'osm': osm_data}, temp_file_obj)
                         first_write = False
 
                     # Reset for the next batch
@@ -360,14 +376,14 @@ def extract_osm(csv_file, data_dir, method, output_dir, dataset_name, partition)
                 osm_data = future.result()
 
                 if not first_write:
-                    file.write(',')
-                json.dump({'filename': img_id + ext, 'gps': (lat, lon), 'osm': osm_data}, file)
+                    temp_file_obj.write(',')
+                json.dump({'filename': img_id + ext, 'gps': (lat, lon), 'osm': osm_data}, temp_file_obj)
 
-            file.write(']')  # End the JSON array
+            temp_file_obj.write(']')  # End the JSON array
 
     finally:
         # Close the temp file and rename it to the final output file
-        os.rename(temp_file.name, f'{output_dir}/M{method}_{dataset_name}_osm_data_{partition}.json')
+        os.rename(temp_file.name, output_file)
 
 
 def main():
